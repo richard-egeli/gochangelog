@@ -8,22 +8,27 @@ import (
 	"strings"
 )
 
-type CommitType string
-
 const (
-	FIX      CommitType = "fix"
-	FEAT     CommitType = "feat"
-	BREAKING CommitType = "BREAKING CHANGE"
-	BUILD    CommitType = "build"
-	CHORE    CommitType = "chore"
-	CI       CommitType = "ci"
-	DOCS     CommitType = "docs"
-	STYLE    CommitType = "style"
-	REFACTOR CommitType = "refactor"
-	PERF     CommitType = "perf"
-	TEST     CommitType = "test"
-	OTHER    CommitType = "other"
+	FIX      string = "fix"
+	FEAT     string = "feat"
+	BREAKING string = "BREAKING CHANGE"
+	BUILD    string = "build"
+	CHORE    string = "chore"
+	CI       string = "ci"
+	DOCS     string = "docs"
+	STYLE    string = "style"
+	REFACTOR string = "refactor"
+	PERF     string = "perf"
+	TEST     string = "test"
+	OTHER    string = "other"
 )
+
+type Commit struct {
+	Date    string
+	Type    string
+	Message string
+	Hash    string
+}
 
 type Tag struct {
 	Raw  string
@@ -31,7 +36,11 @@ type Tag struct {
 	Date string
 }
 
-func GetCommitTypeName(c CommitType) string {
+var commitTypes = []string{
+	FIX, FEAT, BREAKING, BUILD, CHORE, CI, DOCS, STYLE, REFACTOR, PERF, TEST,
+}
+
+func GetCommitTypeName(c string) string {
 	switch c {
 	case FIX:
 		return "Bug Fixes"
@@ -60,11 +69,11 @@ func GetCommitTypeName(c CommitType) string {
 	}
 }
 
-func GetCommits(t1 string, t2 string, filters []string) ([]string, error) {
+func GetCommits(t1 string, t2 string, filters []string) ([]Commit, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	cmd := exec.Command("git", "log", "--pretty=format:[%cd] %s [%h]", "--date=format:%d-%m-%Y", t1+".."+t2)
+	cmd := exec.Command("git", "log", "--pretty=format:%cd <:::> %s <:::> %H", "--date=format:%d-%m-%Y", t1+".."+t2)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -85,7 +94,38 @@ func GetCommits(t1 string, t2 string, filters []string) ([]string, error) {
 		}
 	}
 
-	return filteredLines, nil
+	var commits []Commit
+	for _, line := range filteredLines {
+		split := strings.Split(line, "<:::>")
+		if len(split) < 3 {
+			continue
+		}
+
+		commit := Commit{
+			Date:    strings.Trim(split[0], " "),
+			Message: strings.Trim(split[1], " "),
+			Hash:    strings.Trim(split[2], " "),
+		}
+
+		for _, commitType := range commitTypes {
+			m := strings.ToLower(commit.Message)
+			t := strings.ToLower(commitType) + ":"
+
+			if strings.Contains(m, t) {
+				commit.Message = strings.Trim(strings.ReplaceAll(m, t, ""), " ")
+				commit.Type = commitType
+				break
+			}
+		}
+
+		if len(commit.Type) <= 0 {
+			commit.Type = OTHER
+		}
+
+		commits = append(commits, commit)
+	}
+
+	return commits, nil
 }
 
 func GetTags() ([]Tag, error) {
@@ -120,30 +160,11 @@ func GetTags() ([]Tag, error) {
 	return tags, nil
 }
 
-func SortCommits(commits []string) map[CommitType][]string {
-	result := make(map[CommitType][]string)
+func SortCommits(commits []Commit) map[string][]Commit {
+	result := make(map[string][]Commit)
 
-	commitTypes := []CommitType{
-		FIX, FEAT, BREAKING, BUILD, CHORE, CI, DOCS, STYLE, REFACTOR, PERF, TEST,
-	}
-
-	for _, line := range commits {
-		isValid := false
-		for _, commitType := range commitTypes {
-			typeWithBreak := commitType + ":"
-			line = strings.ToLower(line)
-
-			if strings.Contains(line, string(typeWithBreak)) {
-				line = strings.Replace(line, " "+string(typeWithBreak), "", -1)
-				result[commitType] = append(result[commitType], line)
-				isValid = true
-				break
-			}
-		}
-
-		if !isValid {
-			result[OTHER] = append(result[OTHER], line)
-		}
+	for _, commit := range commits {
+		result[commit.Type] = append(result[commit.Type], commit)
 	}
 
 	return result

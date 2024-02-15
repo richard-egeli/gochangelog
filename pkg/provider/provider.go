@@ -4,6 +4,7 @@ import "gochangelog/pkg/config"
 
 type Provider interface {
 	Diff(prev, new string, config *config.YAML) string
+	Commit(url string) string
 }
 
 type Type string

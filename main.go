@@ -18,6 +18,11 @@ func Reverse[T any](data []T) {
 
 func main() {
 	yaml, err := config.Read()
+
+	if err != nil {
+		panic(err)
+	}
+
 	tags, err := git.GetTags()
 
 	if err != nil {
@@ -28,7 +33,6 @@ func main() {
 	provider := provider.Get(provider.Type(yaml.Provider))
 
 	for index, tag := range tags {
-
 		var t1 string
 		var t2 string
 
@@ -56,7 +60,7 @@ func main() {
 			readme.WriteType(git.GetCommitTypeName(commitType))
 
 			for _, commit := range commits {
-				readme.WriteCommit(commit)
+				readme.WriteCommit(commit.Message, commit.Hash, provider.Commit(yaml.RepoURL))
 			}
 		}
 	}

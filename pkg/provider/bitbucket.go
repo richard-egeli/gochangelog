@@ -19,3 +19,7 @@ func (b *Bitbucket) Diff(prev, next string, config *config.YAML) string {
 
 	return builder.String()
 }
+
+func (b *Bitbucket) Commit(url string) string {
+	return url + "/commits"
+}

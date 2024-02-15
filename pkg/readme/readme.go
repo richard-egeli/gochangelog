@@ -1,6 +1,9 @@
 package readme
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
 
 type Readme struct {
 	builder strings.Builder
@@ -14,7 +17,11 @@ func (r *Readme) Write(s string) {
 }
 
 func (r *Readme) String() string {
-	return r.builder.String()
+	input := r.builder.String()
+	re := regexp.MustCompile(`(\n){3,}`)
+	output := re.ReplaceAllString(input, "\n\n")
+
+	return output
 }
 
 func (r *Readme) WriteTag(tag, url, date string) {
@@ -33,10 +40,17 @@ func (r *Readme) WriteType(t string) {
 	r.Write("\n\n")
 }
 
-func (r *Readme) WriteCommit(c string) {
+func (r *Readme) WriteCommit(c string, hash string, url string) {
+	hashSlice := hash[:7]
 	r.Write("- ")
 	r.Write(c)
-	r.Write("\n")
+	r.Write(" ([")
+	r.Write(hashSlice)
+	r.Write("](")
+	r.Write(url)
+	r.Write("/")
+	r.Write(hash)
+	r.Write("))\n")
 }
 
 func Create() *Readme {

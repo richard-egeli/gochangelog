@@ -14,16 +14,35 @@ type YAML struct {
 	Filter   []string `yaml:"filter"`
 }
 
+var validConfigFilenames = []string{
+	"go.changelog.config.yaml",
+	"gochangelog.config.yaml",
+	"changelog.config.yaml",
+	"go.changelog.yaml",
+	"changelog.yaml",
+}
+
 func Read() (*YAML, error) {
 	config := YAML{}
-	bytes, err := os.ReadFile("gochangelog.config.yaml")
-	if err != nil {
-		return nil, err
-	}
+	for index, filename := range validConfigFilenames {
+		bytes, err := os.ReadFile(filename)
+		if err != nil {
+			if index < len(validConfigFilenames)-1 {
+				continue
+			}
+			return nil, err
+		}
 
-	err = yaml.Unmarshal(bytes, &config)
-	if err != nil {
-		return nil, err
+		err = yaml.Unmarshal(bytes, &config)
+		if err != nil {
+			if index < len(validConfigFilenames)-1 {
+				continue
+			}
+
+			return nil, err
+		}
+
+		break
 	}
 
 	return &config, nil
