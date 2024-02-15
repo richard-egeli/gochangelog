@@ -8,6 +8,22 @@ import (
 	"os/exec"
 )
 
+type CommitType string
+
+const (
+	FIX      CommitType = "fix"
+	FEAT     CommitType = "feat"
+	BREAKING CommitType = "BREAKING CHANGE"
+	BUILD    CommitType = "build"
+	CHORE    CommitType = "chore"
+	CI       CommitType = "ci"
+	DOCS     CommitType = "docs"
+	STYLE    CommitType = "style"
+	REFACTOR CommitType = "refactor"
+	PERF     CommitType = "perf"
+	TEST     CommitType = "test"
+)
+
 func main() {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
