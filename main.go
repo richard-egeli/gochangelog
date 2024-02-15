@@ -3,17 +3,12 @@ package main
 import (
 	"os"
 	"os/exec"
-	"strings"
 
 	"gochangelog/pkg/config"
 	"gochangelog/pkg/git"
+	"gochangelog/pkg/provider"
+	"gochangelog/pkg/readme"
 )
-
-type Config struct {
-	Yaml *config.YAML
-	Tags []string
-	Logs []string
-}
 
 func Reverse[T any](data []T) {
 	for i, j := 0, len(data)-1; i < j; i, j = i+1, j-1 {
@@ -29,11 +24,10 @@ func main() {
 		panic(err)
 	}
 
-	var builder strings.Builder
-	builder.WriteString("# Changelog\n")
+	readme := readme.Create()
+	provider := provider.Get(provider.Type(yaml.Provider))
+
 	for index, tag := range tags {
-		builder.WriteString("## " + tag.Tag + " " + tag.Date)
-		builder.WriteString("\n\n")
 
 		var t1 string
 		var t2 string
@@ -50,30 +44,24 @@ func main() {
 			t2 = tags[index-1].Tag + "^"
 		}
 
+		url := provider.Diff(t1, t2, yaml)
+		readme.WriteTag(tag.Tag, url, tag.Date)
 		commits, err := git.GetCommits(t1, t2, yaml.Filter)
 		if err != nil {
 			panic(err)
 		}
 
 		sortedCommits := git.SortCommits(commits)
-		for commitType, logs := range sortedCommits {
-			builder.WriteString("\n")
-			commitTypeName := git.GetCommitTypeName(commitType)
-			builder.WriteString("### ")
-			builder.WriteString(commitTypeName)
-			builder.WriteString("\n\n")
+		for commitType, commits := range sortedCommits {
+			readme.WriteType(git.GetCommitTypeName(commitType))
 
-			for _, log := range logs {
-				builder.WriteString("- ")
-				builder.WriteString(log)
-				builder.WriteByte('\n')
+			for _, commit := range commits {
+				readme.WriteCommit(commit)
 			}
 		}
-
-		builder.WriteString("\n")
 	}
 
-	cmd := exec.Command("echo", builder.String())
+	cmd := exec.Command("echo", readme.String())
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {

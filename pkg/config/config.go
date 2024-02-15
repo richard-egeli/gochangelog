@@ -7,9 +7,11 @@ import (
 )
 
 type YAML struct {
-	Output  string   `yaml:"output"`
-	Version string   `yaml:"apiVersion"`
-	Filter  []string `yaml:"filter"`
+	RepoURL  string   `yaml:"repoURL"`
+	Provider string   `yaml:"provider"`
+	Output   string   `yaml:"output"`
+	Version  string   `yaml:"apiVersion"`
+	Filter   []string `yaml:"filter"`
 }
 
 func Read() (*YAML, error) {
