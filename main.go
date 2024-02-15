@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
+	"strings"
+
+	"gochangelog/pkg/config"
 )
 
 type CommitType string
@@ -24,21 +26,60 @@ const (
 	TEST     CommitType = "test"
 )
 
-func main() {
+type Commit struct {
+	Type CommitType
+}
+
+func GetLog(filters []string) []string {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	args := os.Args[1:] // The first arg is rubbish
-	log.Println(args[0])
-
-	cmd := exec.Command("git", "log", "--pretty=format:%h - %an, %ar : %s")
+	cmd := exec.Command("git", "log", "--pretty=format:%h - %an, %ar | %s")
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
 	err := cmd.Run()
 	if err != nil {
-		fmt.Println(fmt.Sprint(err) + ": " + stderr.String())
+		log.Fatal(fmt.Println(fmt.Sprint(err) + ": " + stderr.String()))
 	}
 
-	fmt.Println(stdout.String())
+	lines := strings.Split(stdout.String(), "\n")
+	filteredLines := []string{}
+
+	for _, line := range lines {
+		for _, filter := range filters {
+			if strings.Contains(line, filter) {
+				filteredLines = append(filteredLines, line)
+				break
+			}
+		}
+	}
+
+	return filteredLines
+}
+
+func GetTag() []string {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	cmd := exec.Command("git", "tag")
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	config.Read()
+
+	err := cmd.Run()
+	if err != nil {
+		log.Fatal(fmt.Println(fmt.Sprint(err) + ": " + stderr.String()))
+	}
+
+	result := stdout.String()
+	return strings.Split(result, "\n")
+}
+
+func main() {
+	filter := []string{"feat"}
+
+	fmt.Println(GetLog(filter))
+	fmt.Println(GetTag())
 }

@@ -1,0 +1,6 @@
+apiVersion: 0.0.1
+filter:
+  - feat
+  - docs
+  - BREAKING CHANGE
+  - fix
