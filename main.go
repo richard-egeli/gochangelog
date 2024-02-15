@@ -181,6 +181,8 @@ func main() {
 		t1 += "^"
 		if index != len(tags)-1 {
 			t2 += "^"
+		} else {
+			t2 = "HEAD"
 		}
 
 		sortedCommits := SortCommits(GetLogs(t2, t1, yaml.Filter))
