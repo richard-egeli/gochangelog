@@ -72,7 +72,7 @@ func GetLogs(t1 string, t2 string, filters []string) []string {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	cmd := exec.Command("git", "log", "--pretty=format:[%cd] %s ([%h]())", "--date=format:%d-%m-%Y", "--no-walk", t1, t2)
+	cmd := exec.Command("git", "log", "--pretty=format:[%cd] %s ([%h]())", "--date=format:%d-%m-%Y", "--no-walk", t1+"..."+t2)
 
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -166,18 +166,24 @@ func main() {
 	}
 
 	var builder strings.Builder
+	builder.WriteString("Changelog\n")
 	for index, tag := range tags {
 		builder.WriteString("## " + tag.Tag + " " + tag.Date)
 		builder.WriteString("\n\n")
-
 		if index-1 < 0 {
+			log.Println(tag)
 			continue
 		}
 
 		t1 := tags[index-1].Tag
 		t2 := tags[index].Tag
 
-		sortedCommits := SortCommits(GetLogs(t1, t2, yaml.Filter))
+		t1 += "^"
+		if index != len(tags)-1 {
+			t2 += "^"
+		}
+
+		sortedCommits := SortCommits(GetLogs(t2, t1, yaml.Filter))
 
 		for commitType, logs := range sortedCommits {
 			builder.WriteString("\n")

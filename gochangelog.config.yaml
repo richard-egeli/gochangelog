@@ -1,5 +1,4 @@
 apiVersion: 0.0.1
-output: CHANGELOG.md
 filter:
   - fix
   - feat
