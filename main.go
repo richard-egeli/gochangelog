@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -38,11 +39,41 @@ type Config struct {
 	Logs []string
 }
 
+func GetFullCommitType(c CommitType) string {
+	switch c {
+	case FIX:
+		return "Bug Fixes"
+	case FEAT:
+		return "Features"
+	case BREAKING:
+		return "Breaking Changes"
+	case BUILD:
+		return "Build"
+	case CHORE:
+		return "Chore"
+	case CI:
+		return "Configuration"
+	case DOCS:
+		return "Documentation"
+	case STYLE:
+		return "Styling"
+	case REFACTOR:
+		return "Refactor"
+	case PERF:
+		return "Performance"
+	case TEST:
+		return "Tests"
+	default:
+		return "Other"
+	}
+}
+
 func GetLogs(t1 string, t2 string, filters []string) []string {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	cmd := exec.Command("git", "log", "--pretty=format:%h - %an, %ar | %s", t1+"..."+t2)
+	cmd := exec.Command("git", "log", "--pretty=format:[%cd] %s ([%h]())", "--date=format:%d-%m-%Y", "--no-walk", t1, t2)
+
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -104,6 +135,28 @@ func Reverse[T any](data []T) {
 	}
 }
 
+func SortCommits(commits []string) map[CommitType][]string {
+	result := make(map[CommitType][]string)
+
+	commitTypes := []CommitType{
+		FIX, FEAT, BREAKING, BUILD, CHORE, CI, DOCS, STYLE, REFACTOR, PERF, TEST,
+	}
+
+	for _, line := range commits {
+		for _, commitType := range commitTypes {
+			typeWithBreak := commitType + ":"
+			line = strings.ToLower(line)
+
+			if strings.Contains(line, string(typeWithBreak)) {
+				line = strings.Replace(line, " "+string(typeWithBreak), "", -1)
+				result[commitType] = append(result[commitType], line)
+			}
+		}
+	}
+
+	return result
+}
+
 func main() {
 	yaml, err := config.Read()
 	tags, err := GetTags()
@@ -112,39 +165,41 @@ func main() {
 		panic(err)
 	}
 
+	var builder strings.Builder
 	for index, tag := range tags {
-		log.Printf("Date %s -- Tag %s", tag.Date, tag.Tag)
-		if index+1 >= len(tags) {
+		builder.WriteString("## " + tag.Tag + " " + tag.Date)
+		builder.WriteString("\n\n")
+
+		if index-1 < 0 {
 			continue
 		}
 
-		t1 := tags[index].Tag
-		t2 := tags[index+1].Tag
+		t1 := tags[index-1].Tag
+		t2 := tags[index].Tag
 
-		logs := GetLogs(t2, t1, yaml.Filter)
-		for _, log := range logs {
-			fmt.Println(log)
+		sortedCommits := SortCommits(GetLogs(t1, t2, yaml.Filter))
+
+		for commitType, logs := range sortedCommits {
+			builder.WriteString("\n")
+			commitTypeMessage := GetFullCommitType(commitType)
+			builder.WriteString("### ")
+			builder.WriteString(commitTypeMessage)
+			builder.WriteString("\n\n")
+
+			for _, log := range logs {
+				builder.WriteString("- ")
+				builder.WriteString(log)
+				builder.WriteByte('\n')
+			}
 		}
 
-		fmt.Printf("\n\n")
+		builder.WriteString("\n")
 	}
 
-	// config := Config{
-	// 	Yaml: yaml,
-	// 	Tags: GetTag(),
-	// 	Logs: GetLog(yaml.Filter),
-	// }
-
-	// file, err := os.Create(config.Yaml.Output)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	//
-	// defer file.Close()
-	//
-	// _, err = file.WriteString("Testing")
-	// if err != nil {
-	// 	panic(err)
-	// }
-
+	cmd := exec.Command("echo", builder.String())
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		panic(err)
+	}
 }

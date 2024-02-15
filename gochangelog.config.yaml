@@ -1,7 +1,15 @@
 apiVersion: 0.0.1
 output: CHANGELOG.md
 filter:
-  - feat
-  - docs
-  - BREAKING CHANGE
   - fix
+  - feat
+  - BREAKING CHANGE
+  - build
+  - chore
+  - ci
+  - docs
+  - style
+  - refactor
+  - perf
+  - test
+

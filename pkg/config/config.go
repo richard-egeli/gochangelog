@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -25,6 +24,5 @@ func Read() (*YAML, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Dump: \n%v\n\n", config)
 	return &config, nil
 }
