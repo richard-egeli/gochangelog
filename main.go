@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"strings"
 
@@ -27,17 +26,23 @@ const (
 	TEST     CommitType = "test"
 )
 
+type Tag struct {
+	Raw  string
+	Tag  string
+	Date string
+}
+
 type Config struct {
 	Yaml *config.YAML
 	Tags []string
 	Logs []string
 }
 
-func GetLog(filters []string) []string {
+func GetLogs(t1 string, t2 string, filters []string) []string {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	cmd := exec.Command("git", "log", "--pretty=format:%h - %an, %ar | %s")
+	cmd := exec.Command("git", "log", "--pretty=format:%h - %an, %ar | %s", t1+"..."+t2)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -61,72 +66,85 @@ func GetLog(filters []string) []string {
 	return filteredLines
 }
 
-func GetTag() []string {
+func GetTags() ([]Tag, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
+	var tags []Tag
 
-	cmd := exec.Command("git", "tag")
+	cmd := exec.Command("git", "for-each-ref", "--sort=-committerdate", "refs/tags", "--format=%(committerdate:short) | %(refname)")
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-
-	config.Read()
-
 	err := cmd.Run()
 	if err != nil {
-		log.Fatal(fmt.Println(fmt.Sprint(err) + ": " + stderr.String()))
+		return nil, err
 	}
 
-	result := stdout.String()
-	return strings.Split(result, "\n")
+	lines := strings.Split(stdout.String(), "\n")
+	for _, line := range lines {
+		var tag Tag
+
+		tag.Raw = line
+		line = strings.Replace(line, "refs/tags/", "", -1)
+		data := strings.Split(line, "|")
+		if len(data) < 2 {
+			continue
+		}
+
+		tag.Date = strings.Trim(data[0], " ")
+		tag.Tag = strings.Trim(data[1], " ")
+		tags = append(tags, tag)
+	}
+
+	return tags, nil
+}
+
+func Reverse[T any](data []T) {
+	for i, j := 0, len(data)-1; i < j; i, j = i+1, j-1 {
+		data[i], data[j] = data[j], data[i]
+	}
 }
 
 func main() {
 	yaml, err := config.Read()
+	tags, err := GetTags()
+
 	if err != nil {
 		panic(err)
 	}
 
-	config := Config{
-		Yaml: yaml,
-		Tags: GetTag(),
-		Logs: GetLog(yaml.Filter),
-	}
-
-	file, err := os.Create(config.Yaml.Output)
-	if err != nil {
-		panic(err)
-	}
-
-	defer file.Close()
-
-	_, err = file.WriteString("Testing")
-	if err != nil {
-		panic(err)
-	}
-
-	for index := range config.Tags {
-		next := index + 1
-		if next >= len(config.Tags) {
-			break
+	for index, tag := range tags {
+		log.Printf("Date %s -- Tag %s", tag.Date, tag.Tag)
+		if index+1 >= len(tags) {
+			continue
 		}
 
-		curTag := config.Tags[index]
-		nexTag := config.Tags[next]
+		t1 := tags[index].Tag
+		t2 := tags[index+1].Tag
 
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
-
-		cmd := exec.Command("git", "log", "--pretty=format:%h - %an, %ar | %s", curTag+".."+nexTag)
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-		err := cmd.Run()
-		if err != nil {
-			panic(err)
+		logs := GetLogs(t2, t1, yaml.Filter)
+		for _, log := range logs {
+			fmt.Println(log)
 		}
 
-		result := stdout.String()
-		log.Println(curTag)
-		log.Println(result)
-		log.Println("\n\n")
+		fmt.Printf("\n\n")
 	}
+
+	// config := Config{
+	// 	Yaml: yaml,
+	// 	Tags: GetTag(),
+	// 	Logs: GetLog(yaml.Filter),
+	// }
+
+	// file, err := os.Create(config.Yaml.Output)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	//
+	// defer file.Close()
+	//
+	// _, err = file.WriteString("Testing")
+	// if err != nil {
+	// 	panic(err)
+	// }
+
 }
