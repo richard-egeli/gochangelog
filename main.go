@@ -25,6 +25,7 @@ const (
 	REFACTOR CommitType = "refactor"
 	PERF     CommitType = "perf"
 	TEST     CommitType = "test"
+	OTHER    CommitType = "other"
 )
 
 type Tag struct {
@@ -50,7 +51,7 @@ func GetFullCommitType(c CommitType) string {
 	case BUILD:
 		return "Build"
 	case CHORE:
-		return "Chore"
+		return "Chores"
 	case CI:
 		return "Configuration"
 	case DOCS:
@@ -72,7 +73,7 @@ func GetLogs(t1 string, t2 string, filters []string) []string {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	cmd := exec.Command("git", "log", "--pretty=format:[%cd] %s ([%h]())", "--date=format:%d-%m-%Y", "--no-walk", t1+"..."+t2)
+	cmd := exec.Command("git", "log", "--pretty=format:[%cd] %s [%h]", "--date=format:%d-%m-%Y", t1+".."+t2)
 
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -143,6 +144,7 @@ func SortCommits(commits []string) map[CommitType][]string {
 	}
 
 	for _, line := range commits {
+		isValid := false
 		for _, commitType := range commitTypes {
 			typeWithBreak := commitType + ":"
 			line = strings.ToLower(line)
@@ -150,7 +152,13 @@ func SortCommits(commits []string) map[CommitType][]string {
 			if strings.Contains(line, string(typeWithBreak)) {
 				line = strings.Replace(line, " "+string(typeWithBreak), "", -1)
 				result[commitType] = append(result[commitType], line)
+				isValid = true
+				break
 			}
+		}
+
+		if !isValid {
+			result[OTHER] = append(result[OTHER], line)
 		}
 	}
 
@@ -166,27 +174,27 @@ func main() {
 	}
 
 	var builder strings.Builder
-	builder.WriteString("Changelog\n")
+	builder.WriteString("# Changelog\n")
 	for index, tag := range tags {
 		builder.WriteString("## " + tag.Tag + " " + tag.Date)
 		builder.WriteString("\n\n")
-		if index-1 < 0 {
-			log.Println(tag)
-			continue
-		}
 
-		t1 := tags[index-1].Tag
-		t2 := tags[index].Tag
+		var t1 string
+		var t2 string
 
-		t1 += "^"
-		if index != len(tags)-1 {
-			t2 += "^"
+		if index == len(tags)-1 {
+			t1 = tags[index].Tag
 		} else {
-			t2 = "HEAD"
+			t1 = tags[index].Tag + "^"
 		}
 
-		sortedCommits := SortCommits(GetLogs(t2, t1, yaml.Filter))
+		if index == 0 {
+			t2 = "HEAD"
+		} else {
+			t2 = tags[index-1].Tag + "^"
+		}
 
+		sortedCommits := SortCommits(GetLogs(t1, t2, yaml.Filter))
 		for commitType, logs := range sortedCommits {
 			builder.WriteString("\n")
 			commitTypeMessage := GetFullCommitType(commitType)
