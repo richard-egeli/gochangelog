@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -26,8 +27,10 @@ const (
 	TEST     CommitType = "test"
 )
 
-type Commit struct {
-	Type CommitType
+type Config struct {
+	Yaml *config.YAML
+	Tags []string
+	Logs []string
 }
 
 func GetLog(filters []string) []string {
@@ -48,7 +51,7 @@ func GetLog(filters []string) []string {
 
 	for _, line := range lines {
 		for _, filter := range filters {
-			if strings.Contains(line, filter) {
+			if strings.Contains(line, filter+":") {
 				filteredLines = append(filteredLines, line)
 				break
 			}
@@ -78,8 +81,53 @@ func GetTag() []string {
 }
 
 func main() {
-	filter := []string{"feat"}
+	yaml, err := config.Read()
+	if err != nil {
+		panic(err)
+	}
 
-	fmt.Println(GetLog(filter))
-	fmt.Println(GetTag())
+	config := Config{
+		Yaml: yaml,
+		Tags: GetTag(),
+		Logs: GetLog(yaml.Filter),
+	}
+
+	file, err := os.Create(config.Yaml.Output)
+	if err != nil {
+		panic(err)
+	}
+
+	defer file.Close()
+
+	_, err = file.WriteString("Testing")
+	if err != nil {
+		panic(err)
+	}
+
+	for index := range config.Tags {
+		next := index + 1
+		if next >= len(config.Tags) {
+			break
+		}
+
+		curTag := config.Tags[index]
+		nexTag := config.Tags[next]
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		cmd := exec.Command("git", "log", "--pretty=format:%h - %an, %ar | %s", curTag+".."+nexTag)
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		err := cmd.Run()
+		if err != nil {
+			panic(err)
+		}
+
+		result := stdout.String()
+		log.Println(curTag)
+		log.Println(result)
+		log.Println("\n\n")
+	}
+
 }

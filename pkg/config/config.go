@@ -7,13 +7,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type Config struct {
-	Version string `yaml:"apiVersion"`
-	Filter  []string
+type YAML struct {
+	Output  string   `yaml:"output"`
+	Version string   `yaml:"apiVersion"`
+	Filter  []string `yaml:"filter"`
 }
 
-func Read() (*Config, error) {
-	config := Config{}
+func Read() (*YAML, error) {
+	config := YAML{}
 	bytes, err := os.ReadFile("gochangelog.config.yaml")
 	if err != nil {
 		return nil, err
