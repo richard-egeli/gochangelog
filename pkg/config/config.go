@@ -7,11 +7,12 @@ import (
 )
 
 type YAML struct {
-	RepoURL  string   `yaml:"repoURL"`
-	Provider string   `yaml:"provider"`
-	Output   string   `yaml:"output"`
-	Version  string   `yaml:"apiVersion"`
-	Filter   []string `yaml:"filter"`
+	RepoURL     string   `yaml:"repoURL"`
+	CommitPath  string   `yaml:"commitPath"`
+	ComparePath string   `yaml:"comparePath"`
+	Output      string   `yaml:"output"`
+	Version     string   `yaml:"apiVersion"`
+	Filter      []string `yaml:"filter"`
 }
 
 var validConfigFilenames = []string{

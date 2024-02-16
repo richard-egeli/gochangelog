@@ -1,6 +1,8 @@
 apiVersion: 0.0.1
-provider: "bitbucket"
 repoURL: "https://bitbucket.org/intoto-dev/intoto-apparatus-v3"
+commitPath: "/commits"
+comparePath: "/branches/compare"
+
 filter:
   - fix
   - feat

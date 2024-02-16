@@ -1,6 +1,8 @@
 package readme
 
 import (
+	"gochangelog/pkg/config"
+	"gochangelog/pkg/git"
 	"regexp"
 	"strings"
 )
@@ -24,13 +26,20 @@ func (r *Readme) String() string {
 	return output
 }
 
-func (r *Readme) WriteTag(tag, url, date string) {
+func (r *Readme) WriteTag(prev, cur string, tag *git.Tag, config *config.YAML) {
+	host := strings.Trim(config.RepoURL, "/")
+	path := strings.Trim(config.ComparePath, "/")
+	url := host + "/" + path + "/"
+
 	r.Write("\n## [")
-	r.Write(tag)
+	r.Write(tag.Tag)
 	r.Write("](")
 	r.Write(url)
+	r.Write(strings.Trim(prev, "^"))
+	r.Write("%0D")
+	r.Write(strings.Trim(cur, "^"))
 	r.Write(") (")
-	r.Write(date)
+	r.Write(tag.Date)
 	r.Write(")\n\n")
 }
 
@@ -40,16 +49,19 @@ func (r *Readme) WriteType(t string) {
 	r.Write("\n\n")
 }
 
-func (r *Readme) WriteCommit(c string, hash string, url string) {
-	hashSlice := hash[:7]
+func (r *Readme) WriteCommit(commit *git.Commit, config *config.YAML) {
+	hashSlice := commit.Hash[:7]
+	host := strings.Trim(config.RepoURL, "/")
+	path := strings.Trim(config.CommitPath, "/")
+	url := host + "/" + path + "/"
+
 	r.Write("- ")
-	r.Write(c)
+	r.Write(commit.Message)
 	r.Write(" ([")
 	r.Write(hashSlice)
 	r.Write("](")
 	r.Write(url)
-	r.Write("/")
-	r.Write(hash)
+	r.Write(commit.Hash)
 	r.Write("))\n")
 }
 
