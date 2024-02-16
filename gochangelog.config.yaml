@@ -1,7 +1,7 @@
 apiVersion: 0.0.1
 repoURL: "https://github.com/richard-egeli/gochangelog"
 commitPath: "/commit"
-comparePath: "/branches/compare"
+comparePath: "/compare"
 
 filter:
   - fix
