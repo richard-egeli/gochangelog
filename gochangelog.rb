@@ -2,7 +2,7 @@ class Gochangelog < Formula
   desc "Automatically generate changelogs from your git commit history"
   homepage "https://github.com/richard-egeli/gochangelog"
   url "https://github.com/richard-egeli/gochangelog/archive/v1.0.1.tar.gz"
-  sha256 "531608f54cf7983c321f12f1b82e659a33c802f2392da4388469810a724cd117"
+  sha256 "f5bdc2f7ba1b587aca53094bb7eb0871bcbf7d6d90ab90b3a190967a9ccd217b"
 
   depends_on "go" => :build
 
