@@ -26,20 +26,20 @@ func (r *Readme) String() string {
 	return output
 }
 
-func (r *Readme) WriteTag(prev, cur string, tag *git.Tag, config *config.YAML) {
+func (r *Readme) WriteTag(prev, cur, date string, config *config.YAML) {
 	host := strings.Trim(config.RepoURL, "/")
 	path := strings.Trim(config.ComparePath, "/")
 	url := host + "/" + path + "/"
 
 	r.Write("\n## [")
-	r.Write(tag.Tag)
+	r.Write(prev)
 	r.Write("](")
 	r.Write(url)
-	r.Write(strings.Trim(prev, "^"))
+	r.Write(prev)
 	r.Write("%0D")
-	r.Write(strings.Trim(cur, "^"))
+	r.Write(cur)
 	r.Write(") (")
-	r.Write(tag.Date)
+	r.Write(date)
 	r.Write(")\n\n")
 }
 

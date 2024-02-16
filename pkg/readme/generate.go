@@ -3,51 +3,58 @@ package readme
 import (
 	"gochangelog/pkg/config"
 	"gochangelog/pkg/git"
+	"strings"
 )
 
 func Generate() (string, error) {
+	tags := []string{}
+	commits := map[string][]*git.Commit{}
+	readme := Create()
 
 	yaml, err := config.Read()
-
 	if err != nil {
 		return "", nil
 	}
 
-	tags, err := git.GetTags()
-
+	commitLines, err := git.GetCommits()
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
-	readme := Create()
-	for index, tag := range tags {
-		var t1 string
-		var t2 string
-
-		if index == len(tags)-1 {
-			t1 = tags[index].Tag
-		} else {
-			t1 = tags[index].Tag + "^"
-		}
-
-		if index == 0 {
-			t2 = "HEAD"
-		} else {
-			t2 = tags[index-1].Tag + "^"
-		}
-
-		readme.WriteTag(t1, t2, &tag, yaml)
-		commits, err := git.GetCommits(t1, t2, yaml.Filter)
+	activeTag := "HEAD"
+	for _, line := range commitLines {
+		commit, err := git.ParseCommit(strings.Clone(line))
 		if err != nil {
 			return "", err
 		}
 
-		sortedCommits := git.SortCommits(commits)
-		for commitType, commits := range sortedCommits {
+		if commit.IsTag() {
+			activeTag = commit.Tag
+			tags = append(tags, commit.Tag)
+		}
+
+		commits[activeTag] = append(commits[activeTag], commit)
+	}
+
+	prevTag := "HEAD"
+	for _, tag := range tags {
+		commitList := commits[tag]
+		if len(commitList) <= 0 {
+			continue
+		}
+
+		commit := commitList[0]
+		if prevTag != commit.Tag {
+			readme.WriteTag(commit.Tag, prevTag, commit.Date, yaml)
+			prevTag = commit.Tag
+		}
+
+		sorted := git.SortCommits(commitList)
+		for commitType, commits := range sorted {
 			readme.WriteType(git.GetCommitTypeName(commitType))
 
 			for _, commit := range commits {
-				readme.WriteCommit(&commit, yaml)
+				readme.WriteCommit(commit, yaml)
 			}
 		}
 	}

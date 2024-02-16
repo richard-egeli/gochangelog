@@ -11,7 +11,7 @@ import (
 const (
 	FIX      string = "fix"
 	FEAT     string = "feat"
-	BREAKING string = "BREAKING CHANGE"
+	BREAKING string = "breaking change"
 	BUILD    string = "build"
 	CHORE    string = "chore"
 	CI       string = "ci"
@@ -24,14 +24,18 @@ const (
 )
 
 type Commit struct {
+	Tag     string
+	Hash    string
 	Date    string
 	Type    string
 	Message string
-	Hash    string
+}
+
+func (c *Commit) IsTag() bool {
+	return len(c.Tag) > 0
 }
 
 type Tag struct {
-	Raw  string
 	Tag  string
 	Date string
 }
@@ -69,11 +73,44 @@ func GetCommitTypeName(c string) string {
 	}
 }
 
-func GetCommits(t1 string, t2 string, filters []string) ([]Commit, error) {
+func ParseCommitTag(line string) string {
+	return strings.Trim(strings.ReplaceAll(line, "tag: ", ""), " ")
+}
+
+func ParseCommitMessage(line string) (message string, commitType string) {
+	lowerCaseLine := strings.ToLower(line)
+	for _, commitType := range commitTypes {
+		if strings.Contains(lowerCaseLine, commitType+":") {
+			return strings.Trim(strings.ReplaceAll(line, commitType+":", ""), ""), commitType
+		}
+	}
+
+	return line, OTHER
+}
+
+func ParseCommit(line string) (*Commit, error) {
+	commit := &Commit{}
+	parts := strings.Split(line, "<:::>")
+	if len(parts) != 4 {
+		return nil, errors.New("Commit line is the wrong length")
+	}
+
+	message, commitType := ParseCommitMessage(parts[3])
+	commit.Tag = ParseCommitTag(parts[0])
+	commit.Hash = parts[1]
+	commit.Date = parts[2]
+	commit.Message = message
+	commit.Type = commitType
+
+	return commit, nil
+}
+
+func GetCommits() ([]string, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
+	var result []string
 
-	cmd := exec.Command("git", "log", "--pretty=format:%cd <:::> %s <:::> %H", "--date=format:%d-%m-%Y", t1+".."+t2)
+	cmd := exec.Command("git", "log", "--oneline", "--tags", "--pretty=format:%D<:::>%H<:::>%cd<:::>%s", "--date=format:%d-%m-%Y")
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -82,86 +119,44 @@ func GetCommits(t1 string, t2 string, filters []string) ([]Commit, error) {
 		return nil, errors.New(fmt.Sprint(err) + ": " + stderr.String())
 	}
 
-	lines := strings.Split(stdout.String(), "\n")
-	filteredLines := []string{}
-
-	for _, line := range lines {
-		for _, filter := range filters {
-			if strings.Contains(line, filter+":") {
-				filteredLines = append(filteredLines, line)
-				break
-			}
-		}
-	}
-
-	var commits []Commit
-	for _, line := range filteredLines {
-		split := strings.Split(line, "<:::>")
-		if len(split) < 3 {
-			continue
-		}
-
-		commit := Commit{
-			Date:    strings.Trim(split[0], " "),
-			Message: strings.Trim(split[1], " "),
-			Hash:    strings.Trim(split[2], " "),
-		}
-
-		for _, commitType := range commitTypes {
-			m := strings.ToLower(commit.Message)
-			t := strings.ToLower(commitType) + ":"
-
-			if strings.Contains(m, t) {
-				commit.Message = strings.Trim(strings.ReplaceAll(m, t, ""), " ")
-				commit.Type = commitType
-				break
-			}
-		}
-
-		if len(commit.Type) <= 0 {
-			commit.Type = OTHER
-		}
-
-		commits = append(commits, commit)
-	}
-
-	return commits, nil
+	result = strings.Split(stdout.String(), "\n")
+	return result, nil
 }
 
-func GetTags() ([]Tag, error) {
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	var tags []Tag
+// func GetTags() ([]Tag, error) {
+// 	var stdout bytes.Buffer
+// 	var stderr bytes.Buffer
+// 	var tags []Tag
+//
+// 	cmd := exec.Command("git", "for-each-ref", "--sort=-committerdate", "refs/tags", "--format=%(committerdate:short) | %(refname)")
+// 	cmd.Stdout = &stdout
+// 	cmd.Stderr = &stderr
+// 	err := cmd.Run()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	lines := strings.Split(stdout.String(), "\n")
+// 	for _, line := range lines {
+// 		var tag Tag
+//
+// 		tag.Raw = line
+// 		line = strings.Replace(line, "refs/tags/", "", -1)
+// 		data := strings.Split(line, "|")
+// 		if len(data) < 2 {
+// 			continue
+// 		}
+//
+// 		tag.Date = strings.Trim(data[0], " ")
+// 		tag.Tag = strings.Trim(data[1], " ")
+// 		tags = append(tags, tag)
+// 	}
+//
+// 	return tags, nil
+// }
 
-	cmd := exec.Command("git", "for-each-ref", "--sort=-committerdate", "refs/tags", "--format=%(committerdate:short) | %(refname)")
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err != nil {
-		return nil, err
-	}
-
-	lines := strings.Split(stdout.String(), "\n")
-	for _, line := range lines {
-		var tag Tag
-
-		tag.Raw = line
-		line = strings.Replace(line, "refs/tags/", "", -1)
-		data := strings.Split(line, "|")
-		if len(data) < 2 {
-			continue
-		}
-
-		tag.Date = strings.Trim(data[0], " ")
-		tag.Tag = strings.Trim(data[1], " ")
-		tags = append(tags, tag)
-	}
-
-	return tags, nil
-}
-
-func SortCommits(commits []Commit) map[string][]Commit {
-	result := make(map[string][]Commit)
+func SortCommits(commits []*Commit) map[string][]*Commit {
+	result := make(map[string][]*Commit)
 
 	for _, commit := range commits {
 		result[commit.Type] = append(result[commit.Type], commit)
