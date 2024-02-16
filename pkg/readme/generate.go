@@ -7,7 +7,7 @@ import (
 )
 
 func Generate() (string, error) {
-	tags := []string{}
+	tags := []string{"HEAD"}
 	commits := map[string][]*git.Commit{}
 	readme := Create()
 

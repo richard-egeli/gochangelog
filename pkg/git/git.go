@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
@@ -74,7 +75,12 @@ func GetCommitTypeName(c string) string {
 }
 
 func ParseCommitTag(line string) string {
-	return strings.Trim(strings.ReplaceAll(line, "tag: ", ""), " ")
+	re := regexp.MustCompile(`tag:\s(\S+)`)
+	result := re.FindString(line)
+	re = regexp.MustCompile(`[^0-9.\nv]`)
+	result = re.ReplaceAllString(result, "")
+
+	return result
 }
 
 func ParseCommitMessage(line string) (message string, commitType string) {
@@ -110,7 +116,7 @@ func GetCommits() ([]string, error) {
 	var stderr bytes.Buffer
 	var result []string
 
-	cmd := exec.Command("git", "log", "--oneline", "--tags", "--pretty=format:%D<:::>%H<:::>%cd<:::>%s", "--date=format:%d-%m-%Y")
+	cmd := exec.Command("git", "log", "--oneline", "--decorate=no", "--pretty=format:%d<:::>%H<:::>%cd<:::>%s", "--date=format:%d-%m-%Y")
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
