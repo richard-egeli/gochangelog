@@ -1,6 +1,6 @@
 apiVersion: 0.0.1
-repoURL: "https://bitbucket.org/intoto-dev/intoto-apparatus-v3"
-commitPath: "/commits"
+repoURL: "https://github.com/richard-egeli/gochangelog"
+commitPath: "/commit"
 comparePath: "/branches/compare"
 
 filter:
