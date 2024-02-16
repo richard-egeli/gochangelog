@@ -129,38 +129,6 @@ func GetCommits() ([]string, error) {
 	return result, nil
 }
 
-// func GetTags() ([]Tag, error) {
-// 	var stdout bytes.Buffer
-// 	var stderr bytes.Buffer
-// 	var tags []Tag
-//
-// 	cmd := exec.Command("git", "for-each-ref", "--sort=-committerdate", "refs/tags", "--format=%(committerdate:short) | %(refname)")
-// 	cmd.Stdout = &stdout
-// 	cmd.Stderr = &stderr
-// 	err := cmd.Run()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-//
-// 	lines := strings.Split(stdout.String(), "\n")
-// 	for _, line := range lines {
-// 		var tag Tag
-//
-// 		tag.Raw = line
-// 		line = strings.Replace(line, "refs/tags/", "", -1)
-// 		data := strings.Split(line, "|")
-// 		if len(data) < 2 {
-// 			continue
-// 		}
-//
-// 		tag.Date = strings.Trim(data[0], " ")
-// 		tag.Tag = strings.Trim(data[1], " ")
-// 		tags = append(tags, tag)
-// 	}
-//
-// 	return tags, nil
-// }
-
 func SortCommits(commits []*Commit) map[string][]*Commit {
 	result := make(map[string][]*Commit)
 
